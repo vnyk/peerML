@@ -1,0 +1,190 @@
+---
+Title: "Practical Machine Learning assignment"
+Author: "Vinayak Sharma"
+Date: "Saturday, 5/5/18"
+Output: Rmd_file
+---
+
+# Practical ML Peer review assignment
+
+
+
+## Background 
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways.
+
+
+## Data Preprocessing  
+```{r, cache = T}
+library(caret)
+library(rpart)
+library(rpart.plot)
+library(randomForest)
+library(corrplot)
+library(Rcurl)
+```
+### Loading the data. The bellow code returns the address of dataset file which is downloaded.
+```{r, cache = T}
+train <-"https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+test <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+trainCSV  <- read.csv(text = train, header=TRUE, sep=",", na.strings=c("NA",""))
+testCSV  <- read.csv(text = test, header=TRUE, sep=",", na.strings=c("NA",""))
+trainCSV <- trainCSV[,-1]
+```  
+### Making the data partitions
+Making two partitions of our data  
+```{r, cache = T}
+inTrain = createDataPartition(pml_CSV$classe, p=0.60, list=FALSE)
+trainset = trainCSV[inTrain,]
+validate = trainCSV[-inTrain,]
+
+```
+
+
+### Clean the data
+Cleaning empty and columns with very less data.
+```{r, cache = T}
+Keep <- c((colSums(!is.na(trainset[,-ncol(trainset)])) >= 0.6*nrow(trainset)))
+trainset   <-  trainset[,Keep]
+validate <- validate[,Keep]
+testCSV <- testCSV[,keep] #setting dimensions same as of training set
+testing <- rbind(training[100, -59] , testCSV)
+row.names(testing) <- c(100, 1:20)
+
+```
+## Building the RF model  
+Preparing the model for our training set 
+```{r, cache = T}
+model <- randomForest(classe~.,data=trainset)
+importance(model)
+```
+We get bellow result
+```
+##                      MeanDecreaseGini
+## user_name                 100.1709246
+## raw_timestamp_part_1      960.8390144
+## raw_timestamp_part_2       10.5699153
+## cvtd_timestamp           1456.5809902
+## new_window                  0.1571603
+## num_window                554.9066145
+## roll_belt                 511.9603432
+## pitch_belt                304.7291465
+## yaw_belt                  341.8372970
+## total_accel_belt          111.4989771
+## gyros_belt_x               37.2846520
+## gyros_belt_y               51.8109733
+## gyros_belt_z              122.8801347
+## accel_belt_x               66.3448694
+## accel_belt_y               65.6126322
+## accel_belt_z              195.0665026
+## magnet_belt_x             106.8197831
+## magnet_belt_y             209.5570901
+## magnet_belt_z             189.2810577
+## roll_arm                  108.4102841
+## pitch_arm                  54.6691995
+## yaw_arm                    73.8671706
+## total_accel_arm            27.5590488
+## gyros_arm_x                41.2239152
+## gyros_arm_y                42.7943259
+## gyros_arm_z                17.1777226
+## accel_arm_x                98.7502181
+## accel_arm_y                48.4766652
+## accel_arm_z                36.4880428
+## magnet_arm_x               90.4593422
+## magnet_arm_y               76.5258894
+## magnet_arm_z               63.9655514
+## roll_dumbbell             201.3925126
+## pitch_dumbbell             81.0736713
+## yaw_dumbbell              110.4404895
+## total_accel_dumbbell      122.6698455
+## gyros_dumbbell_x           41.4654198
+## gyros_dumbbell_y           96.6646885
+## gyros_dumbbell_z           24.5914710
+## accel_dumbbell_x          119.7002635
+## accel_dumbbell_y          174.5506242
+## accel_dumbbell_z          138.7139168
+## magnet_dumbbell_x         236.6724901
+## magnet_dumbbell_y         305.5802944
+## magnet_dumbbell_z         277.7208688
+## roll_forearm              240.8894482
+## pitch_forearm             283.5545762
+## yaw_forearm                55.3302482
+## total_accel_forearm        30.9219212
+## gyros_forearm_x            23.5458452
+## gyros_forearm_y            35.6251097
+## gyros_forearm_z            22.8191194
+## accel_forearm_x           125.7033854
+## accel_forearm_y            40.4793016
+## accel_forearm_z            87.9142447
+## magnet_forearm_x           77.0024751
+## magnet_forearm_y           77.9098823
+## magnet_forearm_z           98.9735733
+```
+
+
+## Checking Confusion matrix for validating set
+ 
+```{r, cache = T}
+confusionMatrix(predict(model,newdata=validate[,-ncol(validate)]),validating$classe)
+```
+```
+## Confusion Matrix and Statistics
+## 
+##           Reference
+## Prediction    A    B    C    D    E
+##          A 2229    7    0    0    0
+##          B    3 1506    7    0    0
+##          C    0    5 1360   15    2
+##          D    0    0    1 1269    3
+##          E    0    0    0    2 1437
+## 
+## Overall Statistics
+##                                           
+##                Accuracy : 0.9943          
+##                  95% CI : (0.9923, 0.9958)
+##     No Information Rate : 0.2845          
+##     P-Value [Acc > NIR] : < 2.2e-16       
+##                                           
+##                   Kappa : 0.9927          
+##  Mcnemar's Test P-Value : NA              
+## 
+## Statistics by Class:
+## 
+##                      Class: A Class: B Class: C Class: D Class: E
+## Sensitivity            0.9987   0.9921   0.9942   0.9868   0.9965
+## Specificity            0.9988   0.9984   0.9966   0.9994   0.9997
+## Pos Pred Value         0.9969   0.9934   0.9841   0.9969   0.9986
+## Neg Pred Value         0.9995   0.9981   0.9988   0.9974   0.9992
+## Prevalence             0.2845   0.1935   0.1744   0.1639   0.1838
+## Detection Rate         0.2841   0.1919   0.1733   0.1617   0.1832
+## Detection Prevalence   0.2850   0.1932   0.1761   0.1622   0.1834
+## Balanced Accuracy      0.9987   0.9953   0.9954   0.9931   0.9981
+```
+Our validating set have an accuracy of 99.45%
+
+## Prediction on the test set
+
+```
+predictrf <- predict(model,newdata=testing[-1,])
+predictrf
+```
+
+```
+##  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 
+##  B  A  B  A  A  E  D  B  A  A  B  C  B  A  E  E  A  B  B  B 
+## Levels: A B C D E
+```
+
+## Generating result txt file
+
+```
+pml_write_files = function(x){
+  n = length(x)
+  for(i in 1:n){
+    filename = paste0(pathAnswers,"answers/problem_id_",i,".txt")
+    write.table(x[i],file=filename,quote=FALSE,row.names=FALSE,col.names=FALSE)
+  }
+}
+
+pml_write_files(predictrf)
+
+```
